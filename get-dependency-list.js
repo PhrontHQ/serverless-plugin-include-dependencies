@@ -21,6 +21,7 @@ module.exports = function(filename, serverless, cache) {
   const localFilesToProcess = [filename];
 
   function handle(name, basedir, optionalDependencies, peerDependenciesMeta) {
+    //console.log("handle("+name+", "+basedir+", "+optionalDependencies+", "+peerDependenciesMeta+")")
     const moduleName = requirePackageName(name.replace(/\\/, '/'));
     const cacheKey = `${basedir}:${name}`;
 
@@ -30,6 +31,8 @@ module.exports = function(filename, serverless, cache) {
 
     try {
       const pathToModule = resolve.sync(path.join(moduleName, 'package.json'), { basedir });
+      //const pathToModule = require.resolve(path.join(moduleName, 'package.json'),  {paths: [basedir]});
+
       const pkg = readPkgUp.sync({ cwd: pathToModule });
 
       if (pkg) {
@@ -61,13 +64,18 @@ module.exports = function(filename, serverless, cache) {
         } catch(e) {
           throw new Error(`[serverless-plugin-include-dependencies]: Could not find npm package: ${moduleName}`);
         }
+      } else if(e.code === 'ERR_PACKAGE_PATH_NOT_EXPORTED') {
+        return null;
       }
+      
       throw e;
     }
   }
 
   while (localFilesToProcess.length) {
     const currentLocalFile = localFilesToProcess.pop();
+
+    //console.log("currentLocalFile: ",currentLocalFile);
 
     if (filePaths.has(currentLocalFile)) {
       continue;
@@ -91,6 +99,9 @@ module.exports = function(filename, serverless, cache) {
     const currentModule = modulesToProcess.pop();
     const currentModulePath = path.join(currentModule.path, '..');
 
+
+    //console.log("currentModulePath: ",currentModulePath);
+
     if (modulePaths.has(currentModulePath)) {
       continue;
     }
@@ -111,6 +122,9 @@ module.exports = function(filename, serverless, cache) {
   }
 
   modulePaths.forEach(modulePath => {
+
+    //console.log("modulePaths.forEach: ",modulePath);
+
     const moduleFilePaths = glob.sync(path.join(modulePath, '**'), {
       nodir: true,
       ignore: path.join(modulePath, 'node_modules', '**'),
@@ -118,6 +132,8 @@ module.exports = function(filename, serverless, cache) {
     });
 
     moduleFilePaths.forEach(moduleFilePath => {
+      //console.log("filePaths.add("+moduleFilePath+")");
+
       filePaths.add(moduleFilePath);
     });
   });
